@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "defaultSchema": "META",
+  "schemas": [
+    {
+      "name": "META",
+      "type": "custom",
+      "factory": "org.apache.calcite.adapter.csv.CsvSchemaFactory",
+      "operand": {
+        "directory": "metadata"
+      }
+    }
+  ]
+}

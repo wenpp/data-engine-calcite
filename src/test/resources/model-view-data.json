@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "defaultSchema": "META",
+  "schemas": [
+    {
+      "name": "META",
+      "type": "custom",
+      "factory": "org.apache.calcite.adapter.csv.CsvSchemaFactory",
+      "operand": {
+        "directory": "metadata"
+      },
+      "tables": [
+        {
+          "name": "PRODUCT",
+          "type": "view",
+          "sql": "SELECT GUID,ORGID,NAME,VALUE1 as ProductNo,VALUE2 as ProductPrice  FROM DATA WHERE OBJID = 'object001'"
+        },
+        {
+          "name": "CUSTOMER",
+          "type": "view",
+          "sql": "SELECT GUID,ORGID,NAME,VALUE1 as CustomerNo,VALUE6 as CustomerStatus FROM DATA WHERE OBJID = 'object002'"
+        },
+        {
+          "name": "ORDERS",
+          "type": "view",
+          "sql": "SELECT GUID,ORGID,VALUE1 as OrderNo,VALUE2 as CustomerNo,VALUE3 as OrderStatus FROM DATA WHERE OBJID = 'object003'"
+        },
+        {
+          "name": "ORDERITEM",
+          "type": "view",
+          "sql": "SELECT GUID,ORGID,VALUE1 as OrderNo,VALUE2 as ProductNo,VALUE3 as ItemPrice,VALUE4 as ItemQuanity,VALUE5 as OrderItemStatus FROM DATA WHERE OBJID = 'object004'"
+        }
+      ]
+    }
+  ]
+}
