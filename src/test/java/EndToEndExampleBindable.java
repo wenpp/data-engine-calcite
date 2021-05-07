@@ -1,4 +1,4 @@
-import com.oracle.tools.packager.Log;
+
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.config.CalciteConnectionConfig;
@@ -158,7 +158,7 @@ public class EndToEndExampleBindable {
                         SqlExplainLevel.NON_COST_ATTRIBUTES));
 
         // Run the executable plan using a context simply providing access to the schema
-        Hook.QUERY_PLAN.addThread((Consumer<Object>) s-> Log.info("Execute sql:"+s));
+//        Hook.QUERY_PLAN.addThread((Consumer<Object>) s-> Log.info("Execute sql:"+s));
         for (Object[] row : phyPlan.bind(new SchemaOnlyDataContext(schema))) {
             System.out.println(Arrays.toString(row));
         }

@@ -3,7 +3,6 @@ import cc.infocloud.csv.scanable.ViewStmt;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.oracle.tools.packager.Log;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.csv.CsvSchema;
 import org.apache.calcite.adapter.csv.CsvSchemaFactory;
@@ -98,7 +97,8 @@ public class MetaDataMock {
     public void testDefineView(){
         Connection connection = null;
         Statement statement = null;
-        String model = "model-view-data";
+//        String model = "model-view-data";
+        String model = "model-view-bydefine";
 
         Properties info = new Properties();
         info.put("model", jsonPath(model));
@@ -108,13 +108,26 @@ public class MetaDataMock {
 
             statement = connection.createStatement();
 
+            //1-define view manully
             CalciteConnection calciteConnection = connection.unwrap(CalciteConnection.class);
+            List<String> path = Lists.newArrayList("META");
+            final List<String> viewPath1 = ImmutableList.<String>builder().addAll(path).add("PRODUCT").build();
+            calciteConnection.getRootSchema().add("PRODUCT",ViewTable.viewMacro(calciteConnection.getRootSchema(),"SELECT GUID,ORGID,NAME,VALUE1 as ProductNo,VALUE2 as ProductPrice  FROM DATA WHERE OBJID = 'object001'",path,viewPath1,true));
 
+            final List<String> viewPath2 = ImmutableList.<String>builder().addAll(path).add("CUSTOMER").build();
+            calciteConnection.getRootSchema().add("CUSTOMER",ViewTable.viewMacro(calciteConnection.getRootSchema(),"SELECT GUID,ORGID,NAME,VALUE1 as CustomerNo,VALUE6 as CustomerStatus FROM DATA WHERE OBJID = 'object002'",path,viewPath2,true));
 
+            final List<String> viewPath3 = ImmutableList.<String>builder().addAll(path).add("PRODUCT").build();
+            calciteConnection.getRootSchema().add("ORDERS",ViewTable.viewMacro(calciteConnection.getRootSchema(),"SELECT GUID,ORGID,VALUE1 as OrderNo,VALUE2 as CustomerNo,VALUE3 as OrderStatus FROM DATA WHERE OBJID = 'object003'",path,viewPath3,true));
+
+            final List<String> viewPath4 = ImmutableList.<String>builder().addAll(path).add("PRODUCT").build();
+            calciteConnection.getRootSchema().add("ORDERITEM",ViewTable.viewMacro(calciteConnection.getRootSchema(),"SELECT GUID,ORGID,VALUE1 as OrderNo,VALUE2 as ProductNo,VALUE3 as ItemPrice,VALUE4 as ItemQuanity,VALUE5 as OrderItemStatus FROM DATA WHERE OBJID = 'object004'",path,viewPath4,true));
+
+            //2-define sql
 //            String sql = "SELECT GUID,ORGID,NAME,VALUE1 as ProductNo,VALUE2 as ProductPrice  FROM DATA WHERE OBJID = 'object001'";
             //view sql
-            String sql = "SELECT * FROM PRODUCT";
-//            String sql = "select t2.NAME,t2.CustomerNo,t3.OrderNo,t1.NAME as ProductName,t1.ProductPrice,t4.ItemPrice from Product t1,Customer t2,ORDERS t3,ORDERITEM t4 where t4.ProductNo = t1.ProductNo and t3.OrderNo = t4.OrderNo and t2.CustomerNo = t3.CustomerNo and t2.NAME='Cheng Yan' ";
+//            String sql = "SELECT * FROM ORDERITEM";
+            String sql = "select t2.NAME,t2.CustomerNo,t3.OrderNo,t1.NAME as ProductName,t1.ProductPrice,t4.ItemPrice from Product t1,Customer t2,ORDERS t3,ORDERITEM t4 where t4.ProductNo = t1.ProductNo and t3.OrderNo = t4.OrderNo and t2.CustomerNo = t3.CustomerNo and t2.NAME='Cheng Yan' ";
             //explain
 //            printSqlExplain(connection,sql);
             final ResultSet resultSet = statement.executeQuery(sql);
