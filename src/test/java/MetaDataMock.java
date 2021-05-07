@@ -11,6 +11,7 @@ import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.config.CalciteConnectionProperty;
+import org.apache.calcite.config.Lex;
 import org.apache.calcite.interpreter.BindableConvention;
 import org.apache.calcite.interpreter.BindableRel;
 import org.apache.calcite.interpreter.Bindables;
@@ -24,6 +25,7 @@ import org.apache.calcite.materialize.SqlStatisticProvider;
 import org.apache.calcite.plan.*;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.prepare.CalciteCatalogReader;
+import org.apache.calcite.prepare.PlannerImpl;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.rel.rules.CoreRules;
@@ -58,6 +60,7 @@ import org.apache.calcite.tools.Program;
 import org.apache.calcite.util.Source;
 import org.apache.calcite.util.Sources;
 import org.apache.calcite.util.Util;
+import org.apache.commons.lang3.builder.ToStringExclude;
 import org.junit.Test;
 
 import java.io.File;
@@ -165,6 +168,84 @@ public class MetaDataMock {
         }
         return list;
     }
+    @Test
+    public void testViewByDefineParse(){
+        File directoryFile = new File("/Users/wenpeng/Documents/java_workspace/data-engine-calcite/target/test-classes/metadata/DATA.csv");
+        final Source baseSource = Sources.of(directoryFile);
+        RelDataTypeFactory typeFactory = new JavaTypeFactoryImpl();
+
+        SchemaPlus schemaPlus = Frameworks.createRootSchema(true);
+
+        //init table
+        CsvScannableTable metaDataTable = new CsvScannableTable(baseSource,null);
+
+        schemaPlus.add("DATA",metaDataTable);
+
+        //inint view
+        List<String> path = Lists.newArrayList(schemaPlus.getName());
+        final List<String> viewPath = ImmutableList.<String>builder().addAll(path).add("PRODUCT").build();
+        schemaPlus.add("PRODUCT",ViewTable.viewMacro(schemaPlus,"SELECT GUID,ORGID,NAME,VALUE1,VALUE2 FROM DATA WHERE OBJID = 'object001'",path,viewPath,true));
+
+
+        String veiwSql = "SELECT * FROM PRODUCT";
+        SqlParser parser = SqlParser.create(veiwSql);
+
+        // Parse the query into an AST
+        try{
+            SqlNode sqlNode = parser.parseQuery();
+
+            Properties props = new Properties();
+            props.setProperty(CalciteConnectionProperty.CASE_SENSITIVE.camelName(), "false");
+            CalciteConnectionConfig config = new CalciteConnectionConfigImpl(props);
+            CalciteCatalogReader catalogReader = new CalciteCatalogReader(CalciteSchema.from(schemaPlus),
+                    Collections.singletonList(""),
+                    typeFactory, config);
+
+            SqlValidator validator = SqlValidatorUtil.newValidator(SqlStdOperatorTable.instance(),
+                    catalogReader, typeFactory,
+                    SqlValidator.Config.DEFAULT);
+
+            // Validate the initial AST
+            SqlNode validNode = validator.validate(sqlNode);
+
+            // Configure and instantiate the converter of the AST to Logical plan (requires opt cluster)
+//            RelOptCluster cluster = newCluster(typeFactory);typeFactory
+
+            VolcanoPlanner planner = new VolcanoPlanner(RelOptCostImpl.FACTORY, Contexts.of(catalogReader.getConfig()));
+            planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
+
+            PlannerImpl plannerImpl = new PlannerImpl(Frameworks
+                    .newConfigBuilder()
+                    //不知道是啥
+                    // .traitDefs(ConventionTraitDef.INSTANCE, RelCollationTraitDef.INSTANCE)
+                    .sqlToRelConverterConfig(SqlToRelConverter.config())
+                    .parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
+                    .build());
+
+            RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
+            RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
+
+            SqlToRelConverter relConverter = new SqlToRelConverter(
+                    plannerImpl,
+                    validator,
+                    catalogReader,
+                    cluster,
+                    StandardConvertletTable.INSTANCE,
+                    SqlToRelConverter.config());
+
+            // Convert the valid AST into a logical plan
+            RelNode logPlan = relConverter.convertQuery(validNode, false, true).rel;
+
+            // Display the logical plan
+            System.out.println(
+                    RelOptUtil.dumpPlan("[Logical plan]", logPlan, SqlExplainFormat.TEXT,
+                            SqlExplainLevel.EXPPLAN_ATTRIBUTES));
+        }catch (Exception e){
+
+        }
+
+    }
+
 
     @Test
     public void testView(){
@@ -173,6 +254,7 @@ public class MetaDataMock {
         RelDataTypeFactory typeFactory = new JavaTypeFactoryImpl();
 
         //init schema
+
         CalciteSchema schema = CalciteSchema.createRootSchema(true,true,"META");
 
         //init table
@@ -211,6 +293,7 @@ public class MetaDataMock {
             RelOptCluster cluster = newCluster(typeFactory);
 
 //            ViewExpanders.simpleContext(cluster).expandView(null,veiwSql,schema.getPath().get(0),viewPath);
+
 
             SqlToRelConverter relConverter = new SqlToRelConverter(
                     new ViewStmt(sqlNode,schema,typeFactory,cluster),
