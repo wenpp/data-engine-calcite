@@ -182,7 +182,7 @@ public class MetaDataMock {
         schemaPlus.add("DATA",metaDataTable);
 
         //inint view
-        List<String> path = Lists.newArrayList(schemaPlus.getName());
+        List<String> path = Lists.newArrayList("DATA");
         final List<String> viewPath = ImmutableList.<String>builder().addAll(path).add("PRODUCT").build();
         schemaPlus.add("PRODUCT",ViewTable.viewMacro(schemaPlus,"SELECT GUID,ORGID,NAME,VALUE1,VALUE2 FROM DATA WHERE OBJID = 'object001'",path,viewPath,true));
 
@@ -214,10 +214,11 @@ public class MetaDataMock {
             VolcanoPlanner planner = new VolcanoPlanner(RelOptCostImpl.FACTORY, Contexts.of(catalogReader.getConfig()));
             planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
 
+//            Frameworks.newConfigBuilder().defaultSchema(schemaPlus).sqlToRelConverterConfig(SqlToRelConverter.config()).parserConfig()
+
             PlannerImpl plannerImpl = new PlannerImpl(Frameworks
                     .newConfigBuilder()
-                    //不知道是啥
-                    // .traitDefs(ConventionTraitDef.INSTANCE, RelCollationTraitDef.INSTANCE)
+                    .defaultSchema(schemaPlus)
                     .sqlToRelConverterConfig(SqlToRelConverter.config())
                     .parserConfig(SqlParser.configBuilder().setLex(Lex.MYSQL).build())
                     .build());
@@ -240,8 +241,38 @@ public class MetaDataMock {
             System.out.println(
                     RelOptUtil.dumpPlan("[Logical plan]", logPlan, SqlExplainFormat.TEXT,
                             SqlExplainLevel.EXPPLAN_ATTRIBUTES));
-        }catch (Exception e){
 
+            // Initialize optimizer/planner with the necessary rules
+
+            RelOptPlanner planner2 = cluster.getPlanner();
+            planner2.addRule(CoreRules.FILTER_INTO_JOIN);
+            planner2.addRule(Bindables.BINDABLE_TABLE_SCAN_RULE);
+            planner2.addRule(Bindables.BINDABLE_FILTER_RULE);
+            planner2.addRule(Bindables.BINDABLE_JOIN_RULE);
+            planner2.addRule(Bindables.BINDABLE_PROJECT_RULE);
+            planner2.addRule(Bindables.BINDABLE_SORT_RULE);
+
+            // Define the type of the output plan (in this case we want a physical plan in
+            // BindableConvention)
+            logPlan = planner2.changeTraits(logPlan,
+                    cluster.traitSet().replace(BindableConvention.INSTANCE));
+            planner.setRoot(logPlan);
+            // Start the optimization process to obtain the most efficient physical plan based on the
+            // provided rule set.
+            BindableRel phyPlan = (BindableRel) planner2.findBestExp();
+
+            // Display the physical plan
+            System.out.println(
+                    RelOptUtil.dumpPlan("[Physical plan]", phyPlan, SqlExplainFormat.TEXT,
+                            SqlExplainLevel.NON_COST_ATTRIBUTES));
+
+            // Run the executable plan using a context simply providing access to the schema
+//            Hook.QUERY_PLAN.addThread((Consumer<Object>) s-> Log.info("Execute sql:"+s));
+            for (Object[] row : phyPlan.bind(new SchemaOnlyDataContext(CalciteSchema.from(schemaPlus),typeFactory))) {
+                System.out.println(Arrays.toString(row));
+            }
+        }catch (Exception e){
+            System.out.println(e.getCause());
         }
 
     }
