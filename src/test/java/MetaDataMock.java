@@ -226,6 +226,7 @@ public class MetaDataMock {
             RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
             RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
 
+
             SqlToRelConverter relConverter = new SqlToRelConverter(
                     plannerImpl,
                     validator,
@@ -243,23 +244,22 @@ public class MetaDataMock {
                             SqlExplainLevel.EXPPLAN_ATTRIBUTES));
 
             // Initialize optimizer/planner with the necessary rules
-
             RelOptPlanner planner2 = cluster.getPlanner();
             planner2.addRule(CoreRules.FILTER_INTO_JOIN);
-            planner2.addRule(Bindables.BINDABLE_TABLE_SCAN_RULE);
-            planner2.addRule(Bindables.BINDABLE_FILTER_RULE);
-            planner2.addRule(Bindables.BINDABLE_JOIN_RULE);
-            planner2.addRule(Bindables.BINDABLE_PROJECT_RULE);
-            planner2.addRule(Bindables.BINDABLE_SORT_RULE);
+//            planner2.addRule(Bindables.BINDABLE_TABLE_SCAN_RULE);
+//            planner2.addRule(Bindables.BINDABLE_FILTER_RULE);
+//            planner2.addRule(Bindables.BINDABLE_JOIN_RULE);
+//            planner2.addRule(Bindables.BINDABLE_PROJECT_RULE);
+//            planner2.addRule(Bindables.BINDABLE_SORT_RULE);
 
             // Define the type of the output plan (in this case we want a physical plan in
             // BindableConvention)
-            logPlan = planner2.changeTraits(logPlan,
+            logPlan = planner.changeTraits(logPlan,
                     cluster.traitSet().replace(BindableConvention.INSTANCE));
             planner.setRoot(logPlan);
             // Start the optimization process to obtain the most efficient physical plan based on the
             // provided rule set.
-            BindableRel phyPlan = (BindableRel) planner2.findBestExp();
+            BindableRel phyPlan = (BindableRel) planner.findBestExp();
 
             // Display the physical plan
             System.out.println(

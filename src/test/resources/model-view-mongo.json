@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "defaultSchema": "mongo",
+  "schemas": [
+    {
+      "name": "mongo",
+      "type": "custom",
+      "factory": "org.apache.calcite.adapter.mongodb.MongoSchemaFactory",
+      "operand": {
+        "host": "localhost",
+        "database": "metadatamock"
+      }
+    }
+  ]
+}
